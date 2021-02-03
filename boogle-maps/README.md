@@ -12,7 +12,7 @@ $ mvn clean package
 ```
 
 ```
-$ java -jar target/boogle-maps-0.0.1-SNAPSHOT.jar
+$ mvn exec:java
 ```
 
 The service is available by default on port `9191`. You can check it on the 
