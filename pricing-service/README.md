@@ -25,7 +25,7 @@ $ mvn clean package
 ```
 
 ```
-$ java -jar target/pricing-service-0.0.1-SNAPSHOT.jar
+$ mvn exec:java
 ```
 
 It can also be imported in your IDE as a Maven project.
