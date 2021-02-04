@@ -14,3 +14,7 @@ should be running at once for full operation. Further instructions are available
 ## Dependencies
 
 The project requires the use of Maven and Spring Boot, along with Java v11.
+
+## Documentation
+
+The Swagger documentation for Vehicle API available at the same port as the api.
