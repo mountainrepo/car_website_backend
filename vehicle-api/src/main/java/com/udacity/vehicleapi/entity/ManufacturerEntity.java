@@ -9,19 +9,17 @@ public class ManufacturerEntity {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
-    private String make;
-    private String model;
-    private int year;
+    private int code;
+    private String name;
 
     public ManufacturerEntity() {
 
     }
 
-    public ManufacturerEntity(Long id, String make, String model, int year) {
+    public ManufacturerEntity(Long id, int code, String name) {
         this.id = id;
-        this.make = make;
-        this.model = model;
-        this.year = year;
+        this.code = code;
+        this.name = name;
     }
 
     public Long getId() {
@@ -32,27 +30,19 @@ public class ManufacturerEntity {
         this.id = id;
     }
 
-    public String getMake() {
-        return make;
+    public int getCode() {
+        return code;
     }
 
-    public void setMake(String make) {
-        this.make = make;
+    public void setCode(int code) {
+        this.code = code;
     }
 
-    public String getModel() {
-        return model;
+    public String getName() {
+        return name;
     }
 
-    public void setModel(String model) {
-        this.model = model;
-    }
-
-    public int getYear() {
-        return year;
-    }
-
-    public void setYear(int year) {
-        this.year = year;
+    public void setName(String name) {
+        this.name = name;
     }
 }

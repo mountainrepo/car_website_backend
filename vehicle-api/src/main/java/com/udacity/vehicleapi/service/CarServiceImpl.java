@@ -2,10 +2,11 @@ package com.udacity.vehicleapi.service;
 
 import com.udacity.vehicleapi.client.*;
 import com.udacity.vehicleapi.entity.CarEntity;
+import com.udacity.vehicleapi.entity.DetailEntity;
 import com.udacity.vehicleapi.entity.ManufacturerEntity;
 import com.udacity.vehicleapi.exception.*;
 import com.udacity.vehicleapi.repository.*;
-import com.udacity.vehicleapi.web.Car;
+import com.udacity.vehicleapi.web.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +24,9 @@ public class CarServiceImpl implements CarService {
     private ManufacturerRepository manRepository;
 
     @Autowired
+    private DetailRepository detailRepository;
+
+    @Autowired
     private LocationClient locationClient;
 
     @Autowired
@@ -31,67 +35,69 @@ public class CarServiceImpl implements CarService {
     public Long addCar(Car newCar) {
         CarEntity newInsertedCar = null;
 
+        // Get Location
+        // Get ManufacturerId, Save
+        // Save Details
+        // Insert Car
+        // Get price
+        // Update price
+
         try {
             // Get Location
-            LocationEntity location = locationClient.getLocation(newCar.getLatitude(), newCar.getLongitude());
+            Location carLocation = newCar.getLocation();
+            LocationEntity location = locationClient.getLocation(carLocation.getLat(), carLocation.getLon());
 
             // Check Manufacturer table and retrieve id if exists
-            Long manufacturerId = manRepository.getId(newCar.getMake(), newCar.getModel(), newCar.getYear());
+            long manufacturerId = handleManufacturer(newCar.getDetails().getManufacturer());
 
-            if(manufacturerId == null) {
-                ManufacturerEntity newRow = manRepository.save(new ManufacturerEntity(null, newCar.getMake(), newCar.getModel(), newCar.getYear()));
-                manufacturerId = newRow.getId();
-            }
+            // Save Car Details
+            long detailId = handleDetail(newCar.getDetails(), manufacturerId);
 
             // Insert into Car table
-            newInsertedCar = carRepository.save(new CarEntity(null, manufacturerId, newCar.getLatitude(), newCar.getLongitude(), location.getAddress(), location.getCity(), location.getState(), location.getZip(), null, newCar.getCondition(), newCar.getDetails()));
+            // Long id, String condition, long detailId, String currency, double price, String address, String city, String state, String zip
+            newInsertedCar = carRepository.save(new CarEntity(null, newCar.getCondition(), detailId, null, null, carLocation.getLat(), carLocation.getLon(), location.getAddress(), location.getCity(), location.getState(), location.getZip()));
 
             // Get price
-            double price = pricingClient.getPrice(newInsertedCar.getId());
+            PriceEntity priceEntity = pricingClient.getPrice(newInsertedCar.getId());
 
             // Update price
-            carRepository.updatePrice(price, newInsertedCar.getId());
+            carRepository.updatePrice(priceEntity.getCurrency(), priceEntity.getPrice(), newInsertedCar.getId());
         }
         catch(Exception ex) {
+            System.out.println(ex);
             throw ex;
         }
 
         return newInsertedCar.getId();
     }
 
+    private long handleDetail(Detail detail, long manId) {
+        // long id, String body, String model, long manufacturerId, int numberOfDoors, String fuelType, String engine, int mileage, int modelYear, int productionYear, String externalColor)
+        DetailEntity newDetail = detailRepository.save(new DetailEntity(null, detail.getBody(), detail.getModel(), manId, detail.getNumberOfDoors(), detail.getFuelType(), detail.getEngine(), detail.getMileage(), detail.getModelYear(), detail.getProductionYear(), detail.getExternalColor()));
+
+        return newDetail.getId();
+    }
+
+    private long handleManufacturer(Manufacturer manufacturer) {
+        Long manufacturerId = manRepository.getId(manufacturer.getCode(), manufacturer.getName());
+
+        if(manufacturerId == null) {
+            ManufacturerEntity newRow = manRepository.save(new ManufacturerEntity(null, manufacturer.getCode(), manufacturer.getName()));
+            manufacturerId = newRow.getId();
+        }
+
+        return manufacturerId;
+    }
+
     public Long modifyCarById(long id, Car modifiedCar) {
-        CarEntity modifiedCarEntity = null;
+        Long carId = null;
 
+        // Delete detail, car by id
+        // Add car
         try {
-            // Get car by id
-            Optional<CarEntity> carEntity = carRepository.findById(id);
+            deleteCarById(id);
 
-            if(!carEntity.isPresent()) {
-                // throw NotFound Exception
-                throw new CarNotFoundException("Car is not found");
-            }
-
-            CarEntity car = carEntity.get();
-
-            // Get Manufacturer details
-            Optional<ManufacturerEntity> manEntity = manRepository.findById(car.getManufacturerId());
-
-            if(!manEntity.isPresent()) {
-                // throw NotFound Exception
-                throw new ManufacturerNotFoundException("Manufacturer is not found");
-            }
-
-            ManufacturerEntity mEntity = manEntity.get();
-
-            // If Manufacturer details differ then add new row to Manufacturer table
-            long manId = handleManUpdate(car, modifiedCar, mEntity);
-            LocationEntity location = handleLocationUpdate(car, modifiedCar);
-
-            // Delete existing car row
-            carRepository.deleteById(id);
-
-            // Insert new car row
-            modifiedCarEntity = carRepository.save(new CarEntity(id, manId, modifiedCar.getLatitude(), modifiedCar.getLongitude(), location.getAddress(), location.getCity(), location.getState(), location.getZip(), modifiedCar.getPrice(), modifiedCar.getCondition(), modifiedCar.getDetails()));
+            carId = addCar(modifiedCar);
         }
         catch(CarNotFoundException ex) {
             throw ex;
@@ -103,61 +109,24 @@ public class CarServiceImpl implements CarService {
             throw ex;
         }
 
-        return modifiedCarEntity.getId();
+        return carId;
     }
 
-    private LocationEntity handleLocationUpdate(CarEntity carEntity, Car car) {
-        if(car.getLatitude() != carEntity.getLatitude() || car.getLongitude() != car.getLongitude()) {
-            LocationEntity newLocation = locationClient.getLocation(car.getLatitude(), car.getLongitude());
-            return newLocation;
-        }
-        else {
-            return new LocationEntity(carEntity.getAddress(), carEntity.getCity(), carEntity.getState(), carEntity.getZip());
-        }
-    }
-
-    private long handleManUpdate(CarEntity carEntity, Car car, ManufacturerEntity mEntity) {
-        String make = car.getMake(), model = car.getModel();
-        int year = car.getYear();
-
-        if(!make.equals(mEntity.getMake()) || !model.equals(mEntity.getModel()) || year != mEntity.getYear()) {
-            Long manId = manRepository.getId(make, model, year);
-
-            if(manId != null) {
-                return manId;
-            }
-
-            ManufacturerEntity newRow = manRepository.save(new ManufacturerEntity(null, car.getMake(), car.getModel(), car.getYear()));
-            return newRow.getId();
-        }
-        else {
-            return carEntity.getManufacturerId();
-        }
-    }
-
-    public List<Car> getAllCars() {
-        List<Car> carList = new LinkedList<Car>();
+    public List<CarResponse> getAllCars() {
+        List<CarResponse> carList = new LinkedList<CarResponse>();
 
         try {
             // Retrieve all cars
             Iterable<CarEntity> carEntityList = carRepository.findAll();
 
-            for(CarEntity entity : carEntityList) {
-                String make = null, model = null;
-                Integer year = null;
+            for(CarEntity carEntity : carEntityList) {
+                DetailEntity detailEntity = getDetailEntity(carEntity.getDetailId());
+                ManufacturerEntity manEntity = getManEntity(detailEntity.getManufacturerId());
 
-                // For each car, retrieve make, model, year
-                Optional<ManufacturerEntity> manEntity = manRepository.findById(entity.getManufacturerId());
+                DetailResponse detailResponse = computeDetailResponse(detailEntity, manEntity);
+                CarResponse carResponse = computeCarResponse(carEntity, detailResponse);
 
-                if(manEntity.isPresent()) {
-                    ManufacturerEntity manRow = manEntity.get();
-                    make = manRow.getMake();
-                    model = manRow.getModel();
-                    year = manRow.getYear();
-                }
-
-                // Add car to carlist
-                carList.add(new Car(entity.getId(), make, model, year, entity.getLatitude(), entity.getLongitude(), entity.getPrice(), entity.getCondition(), entity.getDetails() ));
+                carList.add(carResponse);
             }
         }
         catch(Exception ex) {
@@ -168,28 +137,20 @@ public class CarServiceImpl implements CarService {
         return carList;
     }
 
-    public Car getCarById(long id) {
-        CarEntity car = null;
-        String make = null, model = null;
-        Integer year = null;
+    public CarResponse getCarById(long id) {
+        // Find car by id
+        // Find Detail by id
+        // Find Manufacturer by id
+        // Compute Response
+        CarResponse carResponse = null;
 
         try {
-            Optional<CarEntity> carEntity = carRepository.findById(id);
+            CarEntity carEntity = getCarEntity(id);
+            DetailEntity detailEntity = getDetailEntity(carEntity.getDetailId());
+            ManufacturerEntity manEntity = getManEntity(detailEntity.getManufacturerId());
 
-            if(!carEntity.isPresent()) {
-                throw new CarNotFoundException("Car is not found");
-            }
-
-            car = carEntity.get();
-
-            Optional<ManufacturerEntity> manEntity = manRepository.findById(car.getManufacturerId());
-
-            if(manEntity.isPresent()) {
-                ManufacturerEntity manRow = manEntity.get();
-                make = manRow.getMake();
-                model = manRow.getModel();
-                year = manRow.getYear();
-            }
+            DetailResponse detailResponse = computeDetailResponse(detailEntity, manEntity);
+            carResponse = computeCarResponse(carEntity, detailResponse);
         }
         catch(CarNotFoundException ex) {
             throw ex;
@@ -198,7 +159,48 @@ public class CarServiceImpl implements CarService {
             throw ex;
         }
 
-        return new Car(car.getId(), make, model, year, car.getLatitude(), car.getLongitude(), car.getPrice(), car.getCondition(), car.getDetails() );
+        return carResponse;
+    }
+
+    private CarEntity getCarEntity(long id) throws CarNotFoundException {
+        Optional<CarEntity> carEntity = carRepository.findById(id);
+
+        if(!carEntity.isPresent()) {
+            throw new CarNotFoundException("Car is not found");
+        }
+
+        return carEntity.get();
+    }
+
+    private DetailEntity getDetailEntity(long id) throws DetailNotFoundException {
+        Optional<DetailEntity> detail = detailRepository.findById(id);
+
+        if(!detail.isPresent()) {
+            throw new DetailNotFoundException("Detail is not found");
+        }
+
+        return detail.get();
+    }
+
+    private ManufacturerEntity getManEntity(long id) throws ManufacturerNotFoundException {
+        Optional<ManufacturerEntity> manEntity = manRepository.findById(id);
+
+        if(!manEntity.isPresent()) {
+            throw new ManufacturerNotFoundException("Manufacturer is not found");
+        }
+
+        return manEntity.get();
+    }
+
+    private DetailResponse computeDetailResponse(DetailEntity detail, ManufacturerEntity manEntity) {
+        // Long id, String body, String model, ManufacturerEntity manufacturer, int numberOfDoors, String fuelType, String engine, int mileage, int modelYear, int productionYear, String externalColor
+        return new DetailResponse(detail.getId(), detail.getBody(), detail.getModel(), manEntity, detail.getNumberOfDoors(), detail.getFuelType(), detail.getEngine(), detail.getMileage(), detail.getModelYear(), detail.getProductionYear(), detail.getExternalColor());
+    }
+
+    private CarResponse computeCarResponse(CarEntity car, DetailResponse detailResponse) {
+        // Long id, String condition, DetailResponse details, String currency, Double price, String address, String city, String state, String zip
+        Location location = new Location(car.getLatitude(), car.getLongitude());
+        return new CarResponse(car.getId(), car.getCondition(), detailResponse, car.getCurrency(), car.getPrice(), location, car.getAddress(), car.getCity(), car.getState(), car.getZip());
     }
 
     public boolean deleteCarById(long id) {
@@ -207,6 +209,9 @@ public class CarServiceImpl implements CarService {
                 throw new CarNotFoundException("Car is not found");
             }
 
+            long detailId = carRepository.findById(id).get().getDetailId();
+
+            detailRepository.deleteById(detailId);
             carRepository.deleteById(id);
         }
         catch(CarNotFoundException ex) {

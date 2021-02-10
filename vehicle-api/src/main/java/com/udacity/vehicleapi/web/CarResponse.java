@@ -1,41 +1,36 @@
-package com.udacity.vehicleapi.entity;
+package com.udacity.vehicleapi.web;
 
-import javax.persistence.*;
+import com.udacity.vehicleapi.entity.DetailEntity;
+import org.springframework.hateoas.RepresentationModel;
 
-@Entity
-public class CarEntity {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+public class CarResponse extends RepresentationModel {
     private Long id;
 
     private String condition;
 
-    private long detailId;
+    private DetailResponse details;
 
     private String currency;
     private Double price;
 
-    private Float latitude;
-    private Float longitude;
+    private Location location;
 
     private String address;
     private String city;
     private String state;
     private String zip;
 
-    public CarEntity() {
+    public CarResponse() {
 
     }
 
-    public CarEntity(Long id, String condition, long detailId, String currency, Double price, Float latitude, Float longitude, String address, String city, String state, String zip) {
+    public CarResponse(Long id, String condition, DetailResponse details, String currency, Double price, Location location, String address, String city, String state, String zip) {
         this.id = id;
         this.condition = condition;
-        this.detailId = detailId;
+        this.details = details;
         this.currency = currency;
         this.price = price;
-        this.latitude = latitude;
-        this.longitude = longitude;
+        this.location = location;
         this.address = address;
         this.city = city;
         this.state = state;
@@ -58,12 +53,12 @@ public class CarEntity {
         this.condition = condition;
     }
 
-    public long getDetailId() {
-        return detailId;
+    public DetailResponse getDetails() {
+        return details;
     }
 
-    public void setDetailId(long detailId) {
-        this.detailId = detailId;
+    public void setDetails(DetailResponse details) {
+        this.details = details;
     }
 
     public String getCurrency() {
@@ -114,19 +109,11 @@ public class CarEntity {
         this.zip = zip;
     }
 
-    public Float getLatitude() {
-        return latitude;
+    public Location getLocation() {
+        return location;
     }
 
-    public void setLatitude(Float latitude) {
-        this.latitude = latitude;
-    }
-
-    public Float getLongitude() {
-        return longitude;
-    }
-
-    public void setLongitude(Float longitude) {
-        this.longitude = longitude;
+    public void setLocation(Location location) {
+        this.location = location;
     }
 }

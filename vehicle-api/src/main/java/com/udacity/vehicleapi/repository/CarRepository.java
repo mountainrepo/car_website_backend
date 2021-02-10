@@ -12,6 +12,6 @@ public interface CarRepository extends CrudRepository<CarEntity, Long> {
 
     @Modifying
     @Transactional
-    @Query(value = "UPDATE CAR_ENTITY c SET c.price = ?1 WHERE c.id = ?2", nativeQuery = true)
-    public void updatePrice(double price, long id);
+    @Query(value = "UPDATE CAR_ENTITY c SET c.currency = ?1, c.price = ?2 WHERE c.id = ?3", nativeQuery = true)
+    public void updatePrice(String currency, Double price, Long id);
 }

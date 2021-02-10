@@ -1,5 +1,7 @@
 package com.udacity.vehicleapi;
 
+import com.udacity.vehicleapi.web.*;
+
 import org.junit.runner.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -68,7 +70,7 @@ class VehicleApiApplicationTests {
         Assertions.assertEquals(response.getStatusCode(), HttpStatus.OK);
     }
 
-    private ResponseEntity<Car> get(Long id) {
+    private ResponseEntity<CarResponse> get(Long id) {
         String url = localhost + port + vehiclesPath + "/vehicle?id=" + id;
 
         HttpHeaders headers = new HttpHeaders();
@@ -78,7 +80,7 @@ class VehicleApiApplicationTests {
 
         HttpEntity<String> requestEntity = new HttpEntity<String>(headers);
 
-        ResponseEntity<Car> response = restTemplate.exchange(url, HttpMethod.GET, requestEntity, Car.class);
+        ResponseEntity<CarResponse> response = restTemplate.exchange(url, HttpMethod.GET, requestEntity, CarResponse.class);
 
         return response;
         //Assertions.assertEquals(response.getStatusCode(), HttpStatus.OK);
@@ -90,7 +92,7 @@ class VehicleApiApplicationTests {
 
         Thread.sleep(10000);
 
-        ResponseEntity<Car> response = get(id);
+        ResponseEntity<CarResponse> response = get(id);
 
         Assertions.assertEquals(response.getStatusCode(), HttpStatus.OK);
     }
@@ -98,7 +100,11 @@ class VehicleApiApplicationTests {
     private Long post() {
         String url = localhost + port + vehiclesPath;
 
-        Car newCar = new Car(0L, "Honda", "CRV", 2013, 20.5, 55.5, 0.0, "NEW", "");
+        //Car newCar = new Car(0L, "Honda", "CRV", 2013, 20.5, 55.5, 0.0, "NEW", "");
+        Manufacturer manufacturer = new Manufacturer(105, "BMW");
+        Detail detail = new Detail("SUV", "x5 M50i", manufacturer, 4, "Gasoline", "4.4L v8", 0, 2021, 2021, "Ametrin Metallic");
+        Location location = new Location(37.7f, -121.93f);
+        Car newCar = new Car("NEW", detail, location);
 
         HttpHeaders headers = new HttpHeaders();
         String credential = "newuser:pass123";
@@ -108,11 +114,11 @@ class VehicleApiApplicationTests {
         HttpEntity<Car> requestEntity = new HttpEntity<Car>(newCar, headers);
 
         //ResponseEntity<String> response = restTemplate.postForEntity(url, newCar, String.class);
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, requestEntity, String.class);
+        ResponseEntity<CarResponse> response = restTemplate.exchange(url, HttpMethod.POST, requestEntity, CarResponse.class);
 
         Assertions.assertEquals(response.getStatusCode(), HttpStatus.CREATED);
 
-        return Long.parseLong(response.getBody());
+        return response.getBody().getId();
     }
 
     @Test
@@ -137,35 +143,44 @@ class VehicleApiApplicationTests {
 
     @Test
     public void testModify() {
-        int newYear = 2015;
+        String externalColor = "Tanzanite Blue Metallic";
 
         // Post
         Long id = post();
 
         // Get
-        ResponseEntity<Car> getResponse = get(id);
+        ResponseEntity<CarResponse> getResponse = get(id);
+        CarResponse carResponse = getResponse.getBody();
+        DetailResponse detail = carResponse.getDetails();
+        ManufacturerEntity manEntity = detail.getManufacturer();
 
         // Modify
         String url = localhost + port + vehiclesPath + "?id=" + id;
 
+        //      Add Headers
         HttpHeaders headers = new HttpHeaders();
         String credential = "newuser:pass123";
         String encodedCredential = new String(Base64.getEncoder().encode(credential.getBytes()));
         headers.add("Authorization", "Basic " + encodedCredential);
 
-        Car car = getResponse.getBody();
-        car.setYear(newYear);
+        //      Perform modification
+        Manufacturer manufacturer = new Manufacturer(manEntity.getCode(), manEntity.getName());
+        Detail details = new Detail(detail.getBody(), detail.getModel(), manufacturer, detail.getNumberOfDoors(), detail.getFuelType(), detail.getEngine(), detail.getMileage(), detail.getModelYear(), detail.getProductionYear(), detail.getExternalColor());
+        details.setExternalColor(externalColor);
+        //Location location = new Location(carResponse.getLatitude(), carResponse.getLongitude());
+        Car modifiedCar = new Car(carResponse.getCondition(), details, carResponse.getLocation());
 
-        HttpEntity<Car> requestEntity = new HttpEntity<Car>(car, headers);
+        // Put modified car
+        HttpEntity<Car> requestEntity = new HttpEntity<Car>(modifiedCar, headers);
 
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.PUT, requestEntity, String.class);
+        ResponseEntity<CarResponse> response = restTemplate.exchange(url, HttpMethod.PUT, requestEntity, CarResponse.class);
 
         Assertions.assertEquals(response.getStatusCode(), HttpStatus.OK);
 
         // Check Modify
-        ResponseEntity<Car> getResponse2 = get(Long.parseLong(response.getBody()));
-        Car modifiedCar = getResponse2.getBody();
+        ResponseEntity<CarResponse> getResponse2 = get(response.getBody().getId());
+        CarResponse verifyCar = getResponse2.getBody();
 
-        Assertions.assertEquals(newYear, modifiedCar.getYear());
+        Assertions.assertEquals(externalColor, verifyCar.getDetails().getExternalColor());
     }
 }

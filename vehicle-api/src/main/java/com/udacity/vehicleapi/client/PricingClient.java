@@ -15,7 +15,7 @@ public class PricingClient {
     @Autowired
     private DiscoveryClient discoveryClient;
 
-    public double getPrice(long vehicleId) {
+    public PriceEntity getPrice(long vehicleId) {
         // Get service instances
         List<ServiceInstance> serviceInstanceList = null;
 
@@ -44,6 +44,6 @@ public class PricingClient {
         }
 
         // Return price
-        return response.getBody().getPrice();
+        return response.getBody();
     }
 }

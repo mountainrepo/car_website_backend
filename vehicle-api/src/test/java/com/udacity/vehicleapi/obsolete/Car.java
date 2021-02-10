@@ -1,4 +1,4 @@
-package com.udacity.vehicleapi.entity;
+package com.udacity.vehicleapi.obsolete;
 
 public class Car {
 
